@@ -1,4 +1,3 @@
-
 """
   Copyright 2011 Jeff Garzik
 
@@ -55,6 +54,17 @@ class JSONRPCException(Exception):
     def __init__(self, rpc_error):
         Exception.__init__(self)
         self.error = rpc_error
+        
+class FakeFloat(float):
+    def __init__(self, value):
+        self._value = value
+    def __repr__(self):
+        return str(self._value)
+
+def decimal_default(obj):
+    if isinstance(obj, decimal.Decimal):
+        return FakeFloat(obj)
+    raise TypeError(repr(obj) + " is not JSON serializable")
 
 
 class AuthServiceProxy(object):
@@ -104,7 +114,7 @@ class AuthServiceProxy(object):
         postdata = json.dumps({'version': '1.1',
                                'method': self.__service_name,
                                'params': args,
-                               'id': self.__id_count})
+                               'id': self.__id_count}, default=decimal_default)
         self.__conn.request('POST', self.__url.path, postdata,
                             {'Host': self.__url.hostname,
                              'User-Agent': USER_AGENT,
@@ -121,7 +131,7 @@ class AuthServiceProxy(object):
             return response['result']
 
     def _batch(self, rpc_call_list):
-        postdata = json.dumps(list(rpc_call_list))
+        postdata = json.dumps(list(rpc_call_list), default=decimal_default)
         self.__conn.request('POST', self.__url.path, postdata,
                             {'Host': self.__url.hostname,
                              'User-Agent': USER_AGENT,
